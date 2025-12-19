@@ -1,13 +1,13 @@
 module "resource_group" {
   source      = "../../modules/1.azurerm_resource_group"
-  rg_name     = "RKS_Infra_RG_dev"
+  rg_name     = "DEBS_Infra_RG_dev"
   rg_location = "New Zealand North"
 }
 
 module "virtual_network" {
   depends_on    = [module.resource_group]
   source        = "../../modules/2.azurerm_virtual_network"
-  vnet_name     = "RK-vnet"
+  vnet_name     = "DEB-vnet"
   rg_location   = module.resource_group.rg_location
   rg_name       = module.resource_group.rg_name
   address_space = ["10.1.0.0/16"]
@@ -34,7 +34,7 @@ module "backend_subnet" {
 module "pip_forntend" {
   depends_on        = [module.resource_group]
   source            = "../../modules/4.azurerm_public_ip"
-  pip_name          = "RK-frontend-pip"
+  pip_name          = "DEB-frontend-pip"
   rg_name           = module.resource_group.rg_name
   location          = module.resource_group.rg_location
   allocation_method = "Static"
@@ -43,7 +43,7 @@ module "pip_forntend" {
 module "pip_backend" {
   depends_on        = [module.resource_group]
   source            = "../../modules/4.azurerm_public_ip"
-  pip_name          = "RK-backend-pip"
+  pip_name          = "DEB-backend-pip"
   rg_name           = module.resource_group.rg_name
   location          = module.resource_group.rg_location
   allocation_method = "Static"
@@ -52,7 +52,7 @@ module "pip_backend" {
 module "network_security_group_frontend" {
   depends_on = [module.frontend_subnet]
   source     = "../../modules/5.azurerm_network_security_group"
-  nsg_name   = "RK-nsg-frontend"
+  nsg_name   = "DEB-nsg-frontend"
   rg_name    = module.resource_group.rg_name
   location   = module.resource_group.rg_location
   subnet_id  = module.frontend_subnet.subnet_id
@@ -61,7 +61,7 @@ module "network_security_group_frontend" {
 module "network_security_group_backend" {
   depends_on = [module.backend_subnet]
   source     = "../../modules/5.azurerm_network_security_group"
-  nsg_name   = "RK-nsg-backend"
+  nsg_name   = "DEB-nsg-backend"
   rg_name    = module.resource_group.rg_name
   location   = module.resource_group.rg_location
   subnet_id  = module.backend_subnet.subnet_id
@@ -70,7 +70,7 @@ module "network_security_group_backend" {
 module "nic_frontend" {
   depends_on   = [module.frontend_subnet]
   source       = "../../modules/6.azurerm_network_interface"
-  nic_name     = "RK-frontend-nic"
+  nic_name     = "DEB-frontend-nic"
   rg_name      = module.resource_group.rg_name
   nic_location = module.resource_group.rg_location
   pip_id       = module.pip_forntend.pip_id
@@ -80,7 +80,7 @@ module "nic_frontend" {
 module "nic_backend" {
   depends_on   = [module.backend_subnet]
   source       = "../../modules/6.azurerm_network_interface"
-  nic_name     = "RK-backend-nic"
+  nic_name     = "DEB-backend-nic"
   rg_name      = module.resource_group.rg_name
   nic_location = module.resource_group.rg_location
   pip_id       = module.pip_backend.pip_id
@@ -92,9 +92,9 @@ module "sqlserver" {
   source                     = "../../modules/7.azurerm_sql_server"
   rg_name                    = module.resource_group.rg_name
   location                   = module.resource_group.rg_location
-  sqlserver_name             = "rk-sqlserver"
-  sql_administrator_login    = "rkadmin"
-  sql_administrator_password = "Ericsson@123"
+  sqlserver_name             = "deb-sqlserver"
+  sql_administrator_login    = "debadmin"
+  sql_administrator_password = "Ericsson@1234"
 }
 
 module "sql_database" {
@@ -102,13 +102,13 @@ module "sql_database" {
   source            = "../../modules/8.azurerm_sql_database"
   rg_name           = module.resource_group.rg_name
   sql_server_name   = module.sqlserver.sql_server_name
-  sql_database_name = "rk-sqldb"
+  sql_database_name = "deb-sqldb"
 }
 
 module "key_vault" {
   depends_on = [module.resource_group]
   source     = "../../modules/9.azurerm_key_vault"
-  kv_name    = "rk-kv-sep"
+  kv_name    = "deb-kv-sep"
   rg_name    = module.resource_group.rg_name
   location   = module.resource_group.rg_location
 }
@@ -119,7 +119,7 @@ module "vm_username" {
   key_vault_name = module.key_vault.key_vault_name
   rg_name        = module.resource_group.rg_name
   secret_name    = "vm-username"
-  secret_value   = "rkadmin"
+  secret_value   = "debadmin"
 }
 
 module "vm_password" {
@@ -128,13 +128,13 @@ module "vm_password" {
   key_vault_name = module.key_vault.key_vault_name
   rg_name        = module.resource_group.rg_name
   secret_name    = "vm-password"
-  secret_value   = "Ericsson@123"
+  secret_value   = "Ericsson@1234"
 }
 
 module "frontend_vm" {
   depends_on      = [module.nic_frontend, module.vm_username, module.vm_password]
   source          = "../../modules/11.azurerm_virtual_machine"
-  vm_name         = "RK-forntend-vm"
+  vm_name         = "DEB-forntend-vm"
   rg_name         = module.resource_group.rg_name
   vm_location     = module.resource_group.rg_location
   nic_id          = module.nic_frontend.nic_id
@@ -143,7 +143,7 @@ module "frontend_vm" {
   image_offer     = "0001-com-ubuntu-server-jammy"
   image_sku       = "22_04-lts-gen2"
   image_version   = "latest"
-  key_vault_name  = "rk-kv-sep"
+  key_vault_name  = "deb-kv-sep"
   admin_username  = module.vm_username.secret_value
   admin_password  = module.vm_password.secret_value
 }
@@ -151,7 +151,7 @@ module "frontend_vm" {
 module "backend_vm" {
   depends_on      = [module.nic_frontend, module.vm_username, module.vm_password]
   source          = "../../modules/11.azurerm_virtual_machine"
-  vm_name         = "RK-backend-vm"
+  vm_name         = "DEB-backend-vm"
   rg_name         = module.resource_group.rg_name
   vm_location     = module.resource_group.rg_location
   nic_id          = module.nic_backend.nic_id
@@ -160,7 +160,7 @@ module "backend_vm" {
   image_offer     = "0001-com-ubuntu-server-jammy"
   image_sku       = "22_04-lts-gen2"
   image_version   = "latest"
-  key_vault_name  = "rk-kv-sep"
+  key_vault_name  = "deb-kv-sep"
   admin_username  = module.vm_username.secret_value
   admin_password  = module.vm_password.secret_value
 }
